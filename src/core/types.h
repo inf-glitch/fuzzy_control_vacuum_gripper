@@ -6,6 +6,13 @@ enum class GripState { SOFT, FIRM, SOLID };
 
 enum class ControlMode { MANUAL, AUTO };
 
+enum class ControllerType { FUZZY, PD };
+
+struct PdParams {
+    float Kp = 0.8f;
+    float Kd = 0.05f;
+};
+
 struct MotorParams {
     float V_supply = 12.0f;
     float I_no_load = 0.08f;
@@ -29,6 +36,8 @@ struct SimState {
     float dt = 1.0f / 60.0f;
 
     ControlMode mode = ControlMode::MANUAL;
+    ControllerType ctrl_type = ControllerType::FUZZY;
+    PdParams pd_params;
     float pwm = 0.0f;
     float setpoint_kpa = -50.0f;
 
@@ -45,6 +54,7 @@ struct SimState {
 
     bool running = false;
     bool paused = false;
+    bool compare_mode = false;
     float sim_speed = 1.0f;
 };
 

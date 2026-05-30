@@ -17,6 +17,7 @@ struct PlotData {
     void clear();
 };
 
-void render_plots(const SimState& state, PlotData& data);
+void render_plots(const SimState& state, PlotData& data,
+                  bool compare_mode, PlotData& compare_data);
 
 } // namespace grip

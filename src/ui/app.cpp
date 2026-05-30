@@ -99,8 +99,13 @@ void App::simulate_step() {
         float error_rate = (error - prev_error_) / dt;
         prev_error_ = error;
 
-        float fuzzy_pwm = fuzzy_ctrl_.compute(error, error_rate);
-        state_.pwm = std::clamp(fuzzy_pwm, 0.0f, 100.0f);
+        if (state_.ctrl_type == ControllerType::FUZZY) {
+            float fuzzy_pwm = fuzzy_ctrl_.compute(error, error_rate);
+            state_.pwm = std::clamp(fuzzy_pwm, 0.0f, 100.0f);
+        } else {
+            float pd_pwm = pd_ctrl_.compute(error, error_rate, state_.pd_params);
+            state_.pwm = std::clamp(pd_pwm, 0.0f, 100.0f);
+        }
         effective_pwm = direction * state_.pwm;
     }
 
@@ -111,7 +116,7 @@ void App::simulate_step() {
     state_.flow = motor_out.flow;
 
     PhysicsOutput phys_out = physics_step(state_.flow, state_.pressure_kpa,
-                                          state_.volume_l, dt, physics_params_);
+                                           state_.volume_l, dt, physics_params_);
     state_.pressure_kpa = phys_out.pressure_kpa;
     state_.volume_l = phys_out.volume_l;
 
@@ -123,11 +128,53 @@ void App::simulate_step() {
                     state_.pressure_kpa,
                     state_.power,
                     state_.flow);
+
+    if (state_.compare_mode) {
+        if (compare_data_.count == 0) {
+            compare_state_ = state_;
+            compare_state_.ctrl_type = ControllerType::PD;
+            compare_state_.pwm = 0.0f;
+            compare_data_.clear();
+        }
+
+        compare_state_.t = state_.t;
+        float cmp_dir = (compare_state_.setpoint_kpa > compare_state_.pressure_kpa) ? 1.0f : -1.0f;
+
+        float cmp_error = std::abs(compare_state_.pressure_kpa - compare_state_.setpoint_kpa);
+        float cmp_rate = (cmp_error - prev_error_compare_) / dt;
+        prev_error_compare_ = cmp_error;
+
+        float cmp_pwm = pd_ctrl_.compute(cmp_error, cmp_rate, state_.pd_params);
+        cmp_pwm = std::clamp(cmp_pwm, 0.0f, 100.0f);
+        float cmp_eff = cmp_dir * cmp_pwm;
+
+        MotorOutput cmp_motor = motor_step(cmp_eff, compare_state_.pressure_kpa, motor_params_);
+        compare_state_.voltage = cmp_motor.voltage;
+        compare_state_.current = cmp_motor.current;
+        compare_state_.power = cmp_motor.power;
+        compare_state_.flow = cmp_motor.flow;
+
+        PhysicsOutput cmp_phys = physics_step(compare_state_.flow, compare_state_.pressure_kpa,
+                                               compare_state_.volume_l, dt, physics_params_);
+        compare_state_.pressure_kpa = cmp_phys.pressure_kpa;
+        compare_state_.volume_l = cmp_phys.volume_l;
+
+        GripperOutput cmp_grip = gripper_update(compare_state_.pressure_kpa);
+        compare_state_.rigidity = cmp_grip.rigidity;
+        compare_state_.grip_state = cmp_grip.grip_state;
+
+        compare_data_.push(static_cast<float>(compare_state_.t),
+                          compare_state_.pressure_kpa,
+                          compare_state_.power,
+                          compare_state_.flow);
+    } else {
+        compare_data_.clear();
+    }
 }
 
 void App::render_ui() {
     render_dashboard(state_, motor_params_, physics_params_, fps_);
-    render_plots(state_, plot_data_);
+    render_plots(state_, plot_data_, state_.compare_mode, compare_data_);
     render_visuals(state_);
 }
 

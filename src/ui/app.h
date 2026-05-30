@@ -3,6 +3,7 @@
 #include "core/types.h"
 #include "ui/plots.h"
 #include "simulation/fuzzy_controller.h"
+#include "simulation/pd_controller.h"
 
 struct SDL_Window;
 typedef void* SDL_GLContext;
@@ -30,9 +31,14 @@ private:
     MotorParams motor_params_;
     PhysicsParams physics_params_;
     FuzzyController fuzzy_ctrl_;
+    PdController pd_ctrl_;
     PlotData plot_data_;
 
+    SimState compare_state_;
+    PlotData compare_data_;
+
     float prev_error_ = 0.0f;
+    float prev_error_compare_ = 0.0f;
 
     double last_fps_update_ = 0.0;
     int frame_count_ = 0;

@@ -29,7 +29,8 @@ void PlotData::clear() {
     count = 0;
 }
 
-void render_plots(const SimState& state, PlotData& data) {
+void render_plots(const SimState& state, PlotData& data,
+                  bool compare_mode, PlotData& compare_data) {
     if (!ImGui::Begin("Plots", nullptr, ImGuiWindowFlags_NoCollapse)) {
         ImGui::End();
         return;
@@ -42,7 +43,12 @@ void render_plots(const SimState& state, PlotData& data) {
     if (ImPlot::BeginPlot("Pressure", ImVec2(-1.0f, 160.0f), ImPlotFlags_NoTitle)) {
         ImPlot::SetupAxes("Time (s)", "kPa", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
         ImPlot::SetupAxisLimits(ImAxis_X1, state.t - 30.0, state.t, ImGuiCond_Always);
-        ImPlot::PlotLine("Pressure", data.times, data.pressures, data.count);
+        const char* label = (state.ctrl_type == ControllerType::FUZZY) ? "Fuzzy" : "PD";
+        ImPlot::PlotLine(label, data.times, data.pressures, data.count);
+        if (compare_mode && compare_data.count > 0) {
+            ImPlot::SetNextLineStyle(ImVec4(1.0f, 0.5f, 0.1f, 1.0f));
+            ImPlot::PlotLine("PD", compare_data.times, compare_data.pressures, compare_data.count);
+        }
         ImPlot::EndPlot();
     }
 
@@ -51,6 +57,10 @@ void render_plots(const SimState& state, PlotData& data) {
         ImPlot::SetupAxes("Time (s)", "W", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
         ImPlot::SetupAxisLimits(ImAxis_X1, state.t - 30.0, state.t, ImGuiCond_Always);
         ImPlot::PlotLine("Power", data.times, data.powers, data.count);
+        if (compare_mode && compare_data.count > 0) {
+            ImPlot::SetNextLineStyle(ImVec4(1.0f, 0.5f, 0.1f, 1.0f));
+            ImPlot::PlotLine("PD", compare_data.times, compare_data.powers, compare_data.count);
+        }
         ImPlot::EndPlot();
     }
 

@@ -76,6 +76,21 @@ void render_dashboard(SimState& state, MotorParams& motor_params,
         }
 
         if (state.mode == ControlMode::AUTO) {
+            const char* ctrls[] = {"Fuzzy", "PD"};
+            int ctrl_idx = (state.ctrl_type == ControllerType::PD) ? 1 : 0;
+            if (ImGui::Combo("Controller", &ctrl_idx, ctrls, 2)) {
+                state.ctrl_type = (ctrl_idx == 1) ? ControllerType::PD : ControllerType::FUZZY;
+            }
+
+            if (state.ctrl_type == ControllerType::PD) {
+                ImGui::SliderFloat("Kp", &state.pd_params.Kp, 0.0f, 2.0f, "%.2f");
+                ImGui::SliderFloat("Kd", &state.pd_params.Kd, 0.0f, 1.0f, "%.3f");
+            }
+
+            if (state.ctrl_type == ControllerType::FUZZY) {
+                ImGui::Checkbox("Compare PD", &state.compare_mode);
+            }
+
             ImGui::SliderFloat("Setpoint", &state.setpoint_kpa, -90.0f, 10.0f, "%.1f kPa");
         }
 
